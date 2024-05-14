@@ -2,11 +2,13 @@ package api
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -29,16 +31,23 @@ func setupTestRouter() *gin.Engine {
 
 func TestCreateCommand(t *testing.T) {
 	r := setupTestRouter()
-	var jsonStr = []byte(`{"name":"test_command2","script":"echo 'Hello, World!'"}`)
-	req, _ := http.NewRequest("POST", "/commands", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
+
+	jsonData := []byte(`{"Name": "test_command", "Script": "echo Hello, World!"}`)
+	req, err := http.NewRequest("POST", "/create-command", bytes.NewBuffer(jsonData))
+	assert.NoError(t, err)
 
 	resp := httptest.NewRecorder()
+
+	r.POST("/create-command", CreateCommand)
 	r.ServeHTTP(resp, req)
 
-	if resp.Code != http.StatusOK {
-		t.Errorf("Expected status OK, got %v", resp.Code)
-	}
+	assert.Equal(t, http.StatusOK, resp.Code)
+
+	var result map[string]interface{}
+	err = json.Unmarshal(resp.Body.Bytes(), &result)
+	assert.NoError(t, err)
+	assert.Equal(t, "test_command", result["Name"])
+	assert.Equal(t, "Hello, World!\n", result["Output"])
 }
 
 func TestGetCommands(t *testing.T) {

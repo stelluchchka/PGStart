@@ -3,6 +3,9 @@ package api
 import (
 	"PGStart/pkg/models"
 
+	"bytes"
+	"os/exec"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -13,6 +16,19 @@ func CreateCommand(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
+
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmdExecution := exec.Command("bash", "-c", cmd.Script)
+	cmdExecution.Stdout = &out
+	cmdExecution.Stderr = &stderr
+	err := cmdExecution.Run()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to execute command", "stderr": stderr.String()})
+		return
+	}
+
+	cmd.Output = out.String()
 
 	db := c.MustGet("db").(*gorm.DB)
 	if err := db.Create(&cmd).Error; err != nil {
